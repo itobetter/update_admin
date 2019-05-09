@@ -1,0 +1,22 @@
+CREATE OR REPLACE FUNCTION update_user_allgroups (uidp int) 
+RETURNS VOID AS $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN(
+    	SELECT 
+			rg.id,
+			rg.name
+		FROM res_groups rg 
+		left join res_groups_users_rel rgur on rg.id=rgur.gid 
+		group by rg.id, rg.name, rgur.gid 
+		HAVING (uidp <> all(ARRAY_AGG(rgur.uid))) or (rgur.gid is null)
+	)	
+    LOOP
+        RAISE NOTICE 'insertin (%)', r.name;
+    	insert 
+    	into res_groups_users_rel (gid, uid)
+        values (r.id, uidp);
+    END LOOP;
+end;
+$$ LANGUAGE plpgsql;
