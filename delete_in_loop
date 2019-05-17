@@ -1,0 +1,40 @@
+select for_loop_delete_query(100)
+	
+CREATE OR REPLACE FUNCTION for_loop_delete_query(
+   n INTEGER DEFAULT 10
+) 
+RETURNS VOID AS $$
+DECLARE
+    rec RECORD;
+BEGIN
+    FOR rec IN (select  warehouse_id ,count(*)/n lit,count(*) total 
+					from procurement_order_replenish 
+					where date_req ='2019-03-02'
+						    and state = 'picking'
+						    and purchase1_requirement_qty > 0.0
+							and warehouse_id != 3
+						group by warehouse_id
+				) 
+    loop
+    	RAISE NOTICE '% - % - %', rec.warehouse_id ,rec.total, rec.lit ;
+    	for rec2 in 1..rec.lit loop    	
+ 			delete
+			from procurement_order_replenish 
+			where id in ( select id from procurement_order_replenish 
+						where date_req ='2019-03-02'
+				    and state = 'picking'
+				    and purchase1_requirement_qty > 0.0
+					and warehouse_id = rec.warehouse_id 
+			limit n);	
+    	END LOOP;
+		delete
+		from procurement_order_replenish 
+		where id in ( select id from procurement_order_replenish 
+						where date_req ='2019-03-02'
+			    		and state = 'picking'
+			    		and purchase1_requirement_qty > 0.0
+						and warehouse_id = rec.warehouse_id
+		); 
+	END LOOP;
+END;
+$$ LANGUAGE plpgsql;
